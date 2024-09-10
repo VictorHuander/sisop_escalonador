@@ -1,3 +1,3 @@
-Public Class Escalonador {
-  
+public class Escalonador {
+    
 }
