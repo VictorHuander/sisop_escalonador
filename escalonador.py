@@ -2,9 +2,12 @@ import random
 import heapq
 
 class Processo:
-    def __init__(self, pid, prioridade):
+    def __init__(self, pid, prioridade, surtoCpu, tempoEs, totalCpu):
         self.pid = pid
         self.prioridade = prioridade
+        self.surtoCpu = surtoCpu
+        self.tempoEs = tempoEs
+        self.totalCpu = totalCpu
         self.creditos = prioridade
         self.tempo_executando = 0
         self.estado = "Pronto"
@@ -16,14 +19,6 @@ class Processo:
             return self.pid < other.pid
         return self.creditos > other.creditos
 
-    def perder_credito(self):
-        # Processo perde um crédito e aumenta o tempo de execução
-        if self.creditos > 0:
-            self.creditos -= 1
-            self.tempo_executando += 1
-        else:
-            self.estado = "Pronto"  # Processo fica pronto novamente
-
     def bloquear(self):
         self.estado = "Bloqueado"
     
@@ -31,10 +26,21 @@ class Processo:
         self.estado = "Pronto"
 
     def resetar_creditos(self):
-        # Fórmula cred = cred/2 + prio - 1
-        self.creditos = self.creditos // 2 + self.prioridade - 1
+        # Fórmula cred = cred/2 + prio
+        self.creditos = self.creditos // 2 + self.prioridade
         if self.creditos > 0:
-            self.estado = "Pronto"
+            self.desbloquear()
+
+    def perder_credito(self):
+        # Processo perde um crédito e aumenta o tempo de execução
+        if self.creditos > 0:
+            self.creditos -= 1
+            self.tempo_executando += 1
+        if self.tempo_executando == self.surtoCpu:
+            self.bloquear()
+            self.tempo_executando = 0
+        else:
+            self.desbloquear()
 
 def escalonador(processos, tempo_simulacao):
     fila_prontos = []  # Heap para fila de prontos baseada nos créditos
@@ -77,23 +83,17 @@ def escalonador(processos, tempo_simulacao):
             fila_prontos = [p for p in fila_prontos if p.estado == "Pronto"]
             heapq.heapify(fila_prontos)
 
-        # Desbloqueio de processos aleatoriamente
-        if processos_bloqueados and random.random() < 0.1:  # 10% de chance de desbloquear um processo bloqueado
-            processo_desbloqueado = processos_bloqueados.pop(0)
-            processo_desbloqueado.desbloquear()
-            heapq.heappush(fila_prontos, processo_desbloqueado)
-
         tempo_atual += 1
 
     return historico_estados, processos
 
 # Exemplo de uso:
 processos =  [
-    Processo(pid=1, prioridade=5),
-    Processo(pid=2, prioridade=3),
-    Processo(pid=3, prioridade=8),
-    Processo(pid=4, prioridade=2),
-    Processo(pid=5, prioridade=7)
+    Processo(pid=1, prioridade=3, surtoCpu=2, tempoEs=5, totalCpu=6),
+    Processo(pid=2, prioridade=3, surtoCpu=3, tempoEs=10, totalCpu=6),
+    Processo(pid=3, prioridade=3, surtoCpu=0, tempoEs=0, totalCpu=14),
+    Processo(pid=4, prioridade=3, surtoCpu=0, tempoEs=0, totalCpu=10)
+    #Processo(pid=5, prioridade=7)
 ]
 tempo_simulacao = 100  # 100ms de tempo de simulação
 historico, processos_finais = escalonador(processos, tempo_simulacao)
