@@ -140,6 +140,7 @@ def escalonador(processos, tempo_simulacao):
                     processo_atual.isExe = False
                     processos_sem_creditos.append(processo_atual)
                     processo_atual = None  # Processo sem créditos, será substituído
+                    print("pode se ter no max " + str(len(processos)) + " processos circulando entre as 3 listas")
                     print("processos sem crédito: " + str(len(processos_sem_creditos)))
                     print("processos bloqueados: " + str(len(processos_bloqueados)))
                     print("processos prontos: " + str(len(fila_prontos)))
