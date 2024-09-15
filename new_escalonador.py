@@ -155,13 +155,17 @@ def escalonador(processos, tempo_simulacao):
 # Exemplo de uso:
 processos =  [
     Processo(ordem=1, prioridade=3, surtoCpu=2, tempoEs=5, totalCpu=6),
-    Processo(ordem=2, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=3, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=6),
     Processo(ordem=4, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=5, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=6)              
+    Processo(ordem=2, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
+    Processo(ordem=6, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
+    Processo(ordem=3, prioridade=4, surtoCpu=-1, tempoEs=-1, totalCpu=6),
+    Processo(ordem=7, prioridade=5, surtoCpu=3, tempoEs=5, totalCpu=6),
+    Processo(ordem=8, prioridade=6, surtoCpu=3, tempoEs=5, totalCpu=6),
+    Processo(ordem=9, prioridade=7, surtoCpu=3, tempoEs=5, totalCpu=6),
+    Processo(ordem=5, prioridade=8, surtoCpu=-1, tempoEs=-1, totalCpu=6)              
     #Processo(pid=5, prioridade=7)
 ]
-tempo_simulacao = 50  # 100ms de tempo de simulação
+tempo_simulacao = 100  # 100ms de tempo de simulação
 historico, processos_finais = escalonador(processos, tempo_simulacao)
 
 
