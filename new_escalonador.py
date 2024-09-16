@@ -2,7 +2,8 @@ import heapq
 
 class Processo:
 
-    def __init__(self, ordem, prioridade, surtoCpu, tempoEs, totalCpu):
+    def __init__(self, nome, ordem, prioridade, surtoCpu, tempoEs, totalCpu):
+        self.nome = nome
         self.ordem = ordem
         self.prioridade = prioridade
         self.surtoCpu = surtoCpu
@@ -39,11 +40,14 @@ class Processo:
     def block(self):
         self.ready = False
         self.blocked = True
+        self.estado = "Blocked"
         self.getEstadoAtual()
     
     def unlock(self):
         self.ready = True
         self.blocked = False
+        self.estado = "Ready"
+        self.countSurto = 0
         self.getEstadoAtual()
 
     def resetar_creditos(self):
@@ -62,18 +66,20 @@ class Processo:
 
 
     def tempo_limite_cpu(self):
-        if self.tempoCpu > self.totalCpu:
-            self.block()
+        # Verifica se o processo já utilizou o tempo de CPU total
+        if self.tempoCpu >= self.totalCpu:
+            self.ended = True  # Marca o processo como terminado
+            self.estado = "Exit"
             return True
-        else:
-            return False
+        return False
     
     def fim_de_exec(self):
-        if self.quantoParaAcabar > self.totalCpu:
+        # Incrementa o quantoParaAcabar corretamente
+        if self.quantoParaAcabar >= self.totalCpu:
             self.ended = True
-            self.quantoParaAcabar = 0
+            self.estado = "Exit"
         else:
-            self.quantoParaAcabar =+ 1
+            self.quantoParaAcabar += 1
     
     def tempoEntradaSaida(self):
         if self.tempoEs > 0:
@@ -98,8 +104,9 @@ def escalonador(processos, tempo_simulacao):
         # Se a fila de prontos estiver vazia, recarrega os processos com créditos
         if len(fila_prontos) == 0:
             for processo in processos:
-                if processo.creditos > 0:
+                if processo.creditos == 0 and not processo.ended:
                     processo.resetar_creditos()
+                    processos_sem_creditos.remove(processo)
                     heapq.heappush(fila_prontos, processo)
 
         # Se não há processo em execução, tenta pegar um da fila de prontos
@@ -110,40 +117,43 @@ def escalonador(processos, tempo_simulacao):
             else:
                 print("Nenhum processo disponível na fila de prontos.")
                 break  # Saída do loop se não houver processos disponíveis
-
+            
         # Se o processo atual atinge o tempo limite ou termina o surto de CPU
-        if (processo_atual.surtoCpu != -1 and processo_atual.countSurto == processo_atual.surtoCpu) or processo_atual.tempo_limite_cpu():
+        if processo_atual and ((processo_atual.surtoCpu != -1 and processo_atual.countSurto == processo_atual.surtoCpu) or processo_atual.tempo_limite_cpu()):
             processo_atual.isExe = False
-            processo_atual.block()
-            processos_bloqueados.append(processo_atual)
+            if processo_atual.surtoCpu != -1 and not processo_atual.ended:  # Caso o processo não use E/S ele não deve ser bloqueado
+                processo_atual.block()            
+                processos_bloqueados.append(processo_atual)
             processo_atual = None  # Não há mais processo em execução
 
         if processo_atual is not None:
             processo_atual.getEstadoAtual()
-            historico_estados.append((tempo_atual, processo_atual.ordem, processo_atual.estado, processo_atual.creditos))
-
+            historico_estados.append((tempo_atual, processo_atual.ordem, processo_atual.estado, processo_atual.creditos))  # Salva estado do processo após sua execução
+            
             # Executa o processo atual por 1ms
             processo_atual.perder_credito()
             processo_atual.tempo_total += 1
             processo_atual.tempoCpu += 1
-            processo_atual.countSurto += 1
+            if processo_atual.surtoCpu != -1:
+                processo_atual.countSurto += 1
 
             # Verifica se algum processo bloqueado pode voltar para a fila de prontos
-            for processo in processos_bloqueados[:]:  
-                processo.tempoEntradaSaida()
-                if processo.estado == "Ready":
-                    processos_bloqueados.remove(processo)
-                    heapq.heappush(fila_prontos, processo)
+            processos_a_desbloquear = []
+            for processo in processos_bloqueados:
+                processo.tempoEntradaSaida()  # Atualiza o tempo de E/S do processo
+                if processo.estado == "Ready":  # Verifica se o processo já está pronto
+                    processos_a_desbloquear.append(processo)
+
+            # Move os processos desbloqueados para a fila de prontos
+            for processo in processos_a_desbloquear:
+                processos_bloqueados.remove(processo)
+                heapq.heappush(fila_prontos, processo)
 
             if not processo_atual.ended:
                 if processo_atual.creditos == 0:
                     processo_atual.isExe = False
                     processos_sem_creditos.append(processo_atual)
                     processo_atual = None  # Processo sem créditos, será substituído
-                    print("pode se ter no max " + str(len(processos)) + " processos circulando entre as 3 listas")
-                    print("processos sem crédito: " + str(len(processos_sem_creditos)))
-                    print("processos bloqueados: " + str(len(processos_bloqueados)))
-                    print("processos prontos: " + str(len(fila_prontos)))
                 elif processo_atual.estado == "Blocked":
                     processos_bloqueados.append(processo_atual)
                     processo_atual = None  # Processo bloqueado, será substituído
@@ -152,17 +162,17 @@ def escalonador(processos, tempo_simulacao):
 
     return historico_estados, processos
 
-# Exemplo de uso:
+
 processos =  [
-    Processo(ordem=1, prioridade=3, surtoCpu=2, tempoEs=5, totalCpu=6),
-    Processo(ordem=4, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=2, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=6, prioridade=3, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=3, prioridade=4, surtoCpu=-1, tempoEs=-1, totalCpu=6),
-    Processo(ordem=7, prioridade=5, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=8, prioridade=6, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=9, prioridade=7, surtoCpu=3, tempoEs=5, totalCpu=6),
-    Processo(ordem=5, prioridade=8, surtoCpu=-1, tempoEs=-1, totalCpu=6)              
+     Processo(nome = "A", ordem=1, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=6),
+    Processo(nome = "B", ordem=4, prioridade=3, surtoCpu=5, tempoEs=10, totalCpu=20),
+    Processo(nome = "C", ordem=2, prioridade=3, surtoCpu=3, tempoEs=2, totalCpu=15),
+    Processo(nome = "D", ordem=6, prioridade=3, surtoCpu=3, tempoEs=1, totalCpu=4),
+    Processo(nome = "E", ordem=3, prioridade=4, surtoCpu=-1, tempoEs=-1, totalCpu=15),
+    Processo(nome = "F", ordem=7, prioridade=5, surtoCpu=3, tempoEs=2, totalCpu=23),
+    Processo(nome = "G", ordem=8, prioridade=6, surtoCpu=3, tempoEs=1, totalCpu=12),
+    Processo(nome = "H", ordem=5, prioridade=8, surtoCpu=-1, tempoEs=-1, totalCpu=14),              
+    Processo(nome = "I", ordem=9, prioridade=10, surtoCpu=15, tempoEs=15, totalCpu=51)
     #Processo(pid=5, prioridade=7)
 ]
 tempo_simulacao = 100  # 100ms de tempo de simulação
@@ -177,7 +187,7 @@ for t, pid, estado, creditos in historico:
 # Exibe o tempo de execução final e turnaround time de cada processo
 print("\nResumo dos Processos:")
 for processo in processos_finais:
-    print(f"Processo {processo.ordem}:")
+    print(f"Processo {processo.nome} - {processo.ordem}:")    
     print(f"  Tempo de Execução (CPU): {processo.tempo_total}ms")
     print(f"  Turnaround Time: {processo.tempo_total}ms")
     print(f"  Créditos Finais: {processo.creditos}")
