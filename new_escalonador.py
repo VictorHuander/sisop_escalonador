@@ -59,7 +59,9 @@ class Processo:
             return self.ended
 
         if self.isExe == True and self.creditos > 0:
-            self.creditos -= 1
+            self.creditos = self.creditos-1
+            self.tempo_total += 1
+            self.tempoCpu += 1
             
         if self.creditos == 0:
             self.credEnded = True
@@ -86,7 +88,7 @@ class Processo:
             self.tempoEs -=1
             self.getEstadoAtual()
         if self.tempoEs == 0:
-            self.unlock()   
+            self.unlock()
 
 def escalonador(processos, tempo_simulacao):
     fila_prontos = []  # Heap para fila de prontos baseada nos créditos
@@ -95,7 +97,7 @@ def escalonador(processos, tempo_simulacao):
     tempo_atual = 0  # Relógio de tempo
     historico_estados = []
     processo_atual = None  # Inicialmente, não há processo ativo
-    
+
     # Inicializa a fila de prontos
     for processo in processos:
         heapq.heappush(fila_prontos, processo)
@@ -117,25 +119,25 @@ def escalonador(processos, tempo_simulacao):
             else:
                 print("Nenhum processo disponível na fila de prontos.")
                 break  # Saída do loop se não houver processos disponíveis
-            
+
         # Se o processo atual atinge o tempo limite ou termina o surto de CPU
         if processo_atual and ((processo_atual.surtoCpu != -1 and processo_atual.countSurto == processo_atual.surtoCpu) or processo_atual.tempo_limite_cpu()):
             processo_atual.isExe = False
             if processo_atual.surtoCpu != -1 and not processo_atual.ended:  # Caso o processo não use E/S ele não deve ser bloqueado
-                processo_atual.block()            
+                processo_atual.block()
                 processos_bloqueados.append(processo_atual)
             processo_atual = None  # Não há mais processo em execução
 
         if processo_atual is not None:
             processo_atual.getEstadoAtual()
-            historico_estados.append((tempo_atual, processo_atual.ordem, processo_atual.estado, processo_atual.creditos))  # Salva estado do processo após sua execução
-            
+
             # Executa o processo atual por 1ms
             processo_atual.perder_credito()
-            processo_atual.tempo_total += 1
-            processo_atual.tempoCpu += 1
             if processo_atual.surtoCpu != -1:
                 processo_atual.countSurto += 1
+
+            historico_estados.append((tempo_atual, processo_atual.ordem, processo_atual.estado,
+                                      processo_atual.creditos))  # Salva estado do processo após sua execução
 
             # Verifica se algum processo bloqueado pode voltar para a fila de prontos
             processos_a_desbloquear = []
@@ -163,17 +165,17 @@ def escalonador(processos, tempo_simulacao):
     return historico_estados, processos
 
 
-processos =  [
-     Processo(nome = "A", ordem=1, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=6),
-    Processo(nome = "B", ordem=4, prioridade=3, surtoCpu=5, tempoEs=10, totalCpu=20),
-    Processo(nome = "C", ordem=2, prioridade=3, surtoCpu=3, tempoEs=2, totalCpu=15),
-    Processo(nome = "D", ordem=6, prioridade=3, surtoCpu=3, tempoEs=1, totalCpu=4),
+processos = [
+    Processo(nome="A", ordem=1, prioridade=3, surtoCpu=2, tempoEs=5, totalCpu=6),
+    Processo(nome="B", ordem=2, prioridade=3, surtoCpu=3, tempoEs=10, totalCpu=6),
+    Processo(nome="C", ordem=3, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=14),
+    Processo(nome="D", ordem=4, prioridade=3, surtoCpu=-1, tempoEs=-1, totalCpu=10),
     Processo(nome = "E", ordem=3, prioridade=4, surtoCpu=-1, tempoEs=-1, totalCpu=15),
     Processo(nome = "F", ordem=7, prioridade=5, surtoCpu=3, tempoEs=2, totalCpu=23),
     Processo(nome = "G", ordem=8, prioridade=6, surtoCpu=3, tempoEs=1, totalCpu=12),
-    Processo(nome = "H", ordem=5, prioridade=8, surtoCpu=-1, tempoEs=-1, totalCpu=14),              
+    Processo(nome = "H", ordem=5, prioridade=8, surtoCpu=-1, tempoEs=-1, totalCpu=14),
     Processo(nome = "I", ordem=9, prioridade=10, surtoCpu=15, tempoEs=15, totalCpu=51)
-    #Processo(pid=5, prioridade=7)
+    # Processo(pid=5, prioridade=7)
 ]
 tempo_simulacao = 100  # 100ms de tempo de simulação
 historico, processos_finais = escalonador(processos, tempo_simulacao)
